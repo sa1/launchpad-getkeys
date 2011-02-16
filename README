@@ -8,8 +8,7 @@ Defaults env_keep = "http_proxy"
 above the line:
 Defaults        env_reset
 
-Save the launchpad-getkeys in your path. 
-and run 
+Save the launchpad-getkeys in your path and run:
 sudo launchpad-getkeys
 
 You can specify the keyserver and the proxy server under the -k and -p commandline args respectively.
