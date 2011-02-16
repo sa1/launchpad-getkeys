@@ -1,0 +1,16 @@
+This is a modified version of Launchpad-getkeys with proxy support added.
+(see http://www.webupd8.org/2010/05/automatically-import-all-missing.html)
+
+Usage:
+First you need to run sudo visudo.
+Add the line:
+Defaults env_keep = "http_proxy"
+above the line:
+Defaults        env_reset
+
+Save the launchpad-getkeys in your path. 
+and run 
+sudo launchpad-getkeys
+
+You can specify the keyserver and the proxy server under the -k and -p commandline args respectively.
+
