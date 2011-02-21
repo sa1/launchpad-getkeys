@@ -11,5 +11,5 @@ Defaults        env_reset
 Save the launchpad-getkeys in your path and run:
 sudo launchpad-getkeys
 
-You can specify the keyserver and the proxy server under the -k and -p commandline args respectively.
+You can specify the keyserver and the proxy server with -k SERVER:PORT and -p http://SERVER:PORT commandline args respectively.
 
