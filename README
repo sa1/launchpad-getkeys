@@ -1,6 +1,8 @@
 This is a modified version of Launchpad-getkeys with experimental proxy support added.
 (see http://www.webupd8.org/2010/05/automatically-import-all-missing.html)
 
+The changes have been merged back. Please see http://www.webupd8.org/2011/02/launchpad-getkeys-gets-proxy-support.html now.
+
 Usage:
 First you need to run sudo visudo.
 Add the line:
