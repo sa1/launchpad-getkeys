@@ -46,7 +46,7 @@ if [[ $PROXY ]]; then
 
 	PROXYSERVERANDPORT=$(echo $PROXY | grep ":")
 		if [[ ! $PROXYSERVERANDPORT ]]; then
-		echo "Error: please enter a proxyserver and a port, like so: sudo launchpad-getkeys -p PROXYSERVER:PORT"
+		echo "Error: please enter a proxyserver and a port, like so: sudo launchpad-getkeys -p http://PROXYSERVER:PORT"
 		exit 0
 	fi
 fi
