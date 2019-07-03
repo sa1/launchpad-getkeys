@@ -62,6 +62,10 @@ apt-get update -qq 2> /tmp/updateresults
 
 
 MISSINGGEYS=$(cat /tmp/updateresults)
+PROXY_OPTS=""
+if [[ ! -z ${PROXY:-} ]]; then
+       PROXY_OPTS="--keyserver-options http-proxy=$PROXY"
+fi
 
 if [[ $MISSINGGEYS ]]; then
 
@@ -73,9 +77,9 @@ Trying to import all the missing keys"
 	while read curline; do
 		GPGKEYTOGET=$(echo $curline | grep NO_PUBKEY | sed -e 's/.*: \|NO_PUBKEY //g')
 		if [[ $KEYSERVER ]]; then
-			gpg --ignore-time-conflict --no-options --no-default-keyring --secret-keyring /etc/apt/secring.gpg --trustdb-name /etc/apt/trustdb.gpg --keyring /etc/apt/trusted.gpg --primary-keyring /etc/apt/trusted.gpg --keyserver hkp://$KEYSERVER --keyserver-options http-proxy=$PROXY  --recv $GPGKEYTOGET
+			gpg --ignore-time-conflict --no-options --no-default-keyring --secret-keyring /etc/apt/secring.gpg --trustdb-name /etc/apt/trustdb.gpg --keyring /etc/apt/trusted.gpg --primary-keyring /etc/apt/trusted.gpg --keyserver hkp://$KEYSERVER $PROXY_OPTS  --recv $GPGKEYTOGET
 		else
-			gpg --ignore-time-conflict --no-options --no-default-keyring --secret-keyring /etc/apt/secring.gpg --trustdb-name /etc/apt/trustdb.gpg --keyring /etc/apt/trusted.gpg --primary-keyring /etc/apt/trusted.gpg --keyserver hkp://keyserver.ubuntu.com:80 --keyserver-options http-proxy=$PROXY --recv $GPGKEYTOGET
+			gpg --ignore-time-conflict --no-options --no-default-keyring --secret-keyring /etc/apt/secring.gpg --trustdb-name /etc/apt/trustdb.gpg --keyring /etc/apt/trusted.gpg --primary-keyring /etc/apt/trusted.gpg --keyserver hkp://keyserver.ubuntu.com:80 $PROXY_OPTS  --recv $GPGKEYTOGET
 		fi
 		let n=n+1
 	done < /tmp/updateresults
