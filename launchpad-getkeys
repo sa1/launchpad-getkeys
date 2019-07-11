@@ -97,6 +97,7 @@ Trying to import all the missing keys"
                 | sed -e 's/ /__/g' \
                 | sed -e 's/[<>:]//g')
 
+            echo "TGT_NAME_BASE: $TGT_NAME_BASE"
         TGT_GPG_DIR=/etc/apt/trusted.gpg.d
         mkdir -p $TGT_GPG_DIR
         TGT_GPG="${TGT_GPG_DIR}/getkeys__${TGT_NAME_BASE}__${GPGKEYTOGET}.gpg"
