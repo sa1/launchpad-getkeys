@@ -88,15 +88,27 @@ Trying to import all the missing keys"
             --homedir "$GPGTMPHOME"                      \
             --keyring "$KEYBOX"          \
             "${KEYSRV_OPTS[@]}"  "${PROXY_OPTS[@]}"                    \
-            --recv $GPGKEYTOGET
+            --recv $GPGKEYTOGET >$GPGTMPHOME/gpg.stdout
+            cat $GPGTMPHOME/gpg.stdout
+            TGT_NAME_BASE=$(cat  $GPGTMPHOME/gpg.stdout \
+                | grep -F -m 1 "public key" \
+                | sed -e 's/^[^"]*"//' \
+                | sed -e 's/"[^"]*//' \
+                | sed -e 's/ /__/g' \
+                | sed -e 's/[<>:]//g')
+
+        gpg --ignore-time-conflict --no-options --no-default-keyring \
+            --no-auto-check-trustdb --trust-model always  \
+            --keyring /etc/apt/trusted.gpg.d/getkeys-autokey-0E08A149DE57BFBE.gpg  --list-keys
         TGT_GPG_DIR=/etc/apt/trusted.gpg.d
         mkdir -p $TGT_GPG_DIR
-        TGT_GPG=$TGT_GPG_DIR/getkeys-autokey-$GPGKEYTOGET.gpg
+        TGT_GPG=$TGT_GPG_DIR/getkeys__$TGT_NAME_BASE__$GPGKEYTOGET.gpg
         [ -f "$TGT_GPG" ] && rm -f "$TGT_GPG"
         gpg --ignore-time-conflict --no-options --no-default-keyring \
             --no-auto-check-trustdb --trust-model always \
             --homedir "$GPGTMPHOME" --keyring "$KEYBOX"  \
             --export  --output $TGT_GPG
+        rm -Rf $GPGTMPHOME
 		let n=n+1
 	done < /tmp/updateresults
 
