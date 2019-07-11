@@ -70,6 +70,8 @@ fi
 
 if [[ $MISSINGGEYS ]]; then
 
+declare -a IMPORTED_KEYS=()
+
 echo "
 Trying to import all the missing keys"
 
@@ -78,6 +80,7 @@ Trying to import all the missing keys"
 	while read curline; do
 		GPGKEYTOGET=$(echo $curline | grep NO_PUBKEY | sed -e 's/.*: \|NO_PUBKEY //g')
         [ -z "${GPGKEYTOGET}" ] && continue
+        [[ " ${IMPORTED_KEYS[@]} " =~ " ${GPGKEYTOGET} " ]] && continue
         GPGTMPHOME=$(mktemp -d /tmp/gpg-tmp-home.XXXXXXXXXX)
         KEYBOX=$GPGTMPHOME/pubring.gpg
         KEYSRV_OPTS=( --keyserver hkp://keyserver.ubuntu.com:80 )
@@ -110,6 +113,7 @@ Trying to import all the missing keys"
             --export  --output $TGT_GPG
         echo "Key $GPGKEYTOGET saved as $TGT_GPG"
         rm -Rf $GPGTMPHOME
+        IMPORTED_KEYS+=($GPGKEYTOGET)
 		let n=n+1
 	done < /tmp/updateresults
 
