@@ -62,9 +62,9 @@ apt-get update -qq 2> /tmp/updateresults
 
 
 MISSINGGEYS=$(cat /tmp/updateresults)
-PROXY_OPTS=""
+PROXY_OPTS=()
 if [[ ! -z ${PROXY:-} ]]; then
-       PROXY_OPTS="--keyserver-options http-proxy=$PROXY"
+    PROXY_OPTS=( --keyserver-options http-proxy=$PROXY )
 fi
 
 if [[ $MISSINGGEYS ]]; then
@@ -77,16 +77,16 @@ Trying to import all the missing keys"
 	while read curline; do
 		GPGKEYTOGET=$(echo $curline | grep NO_PUBKEY | sed -e 's/.*: \|NO_PUBKEY //g')
         GPGTMPHOME=$(mktemp -d /tmp/gpg-tmp-home.XXXXXXXXXX)
-        KEYSRV_OPTS="--keyserver hkp://keyserver.ubuntu.com:80"
+        KEYSRV_OPTS=( --keyserver hkp://keyserver.ubuntu.com:80 )
 		if [[ $KEYSERVER ]]; then
-            KEYSRV_OPTS="--keyserver hkp://$KEYSERVER"
+            KEYSRV_OPTS=( --keyserver hkp://$KEYSERVER )
         fi
 
 		gpg --ignore-time-conflict --no-options --no-default-keyring \
             --no-auto-check-trustdb --trust-model always \
             --homedir "$GPGTMPHOME"                      \
             --keyring "$GPGTMPHOME/pubring.gpg"          \
-            $KEYSRV_OPTS  $PROXY_OPTS                    \
+            "${KEYSRV_OPTS[@]}"  "${PROXY_OPTS[@]}"                    \
             --recv $GPGKEYTOGET
 		let n=n+1
 	done < /tmp/updateresults
