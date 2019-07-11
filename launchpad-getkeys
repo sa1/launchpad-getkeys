@@ -77,6 +77,7 @@ Trying to import all the missing keys"
 	while read curline; do
 		GPGKEYTOGET=$(echo $curline | grep NO_PUBKEY | sed -e 's/.*: \|NO_PUBKEY //g')
         GPGTMPHOME=$(mktemp -d /tmp/gpg-tmp-home.XXXXXXXXXX)
+        KEYBOX=$GPGTMPHOME/pubring.gpg
         KEYSRV_OPTS=( --keyserver hkp://keyserver.ubuntu.com:80 )
 		if [[ $KEYSERVER ]]; then
             KEYSRV_OPTS=( --keyserver hkp://$KEYSERVER )
@@ -85,9 +86,16 @@ Trying to import all the missing keys"
 		gpg --ignore-time-conflict --no-options --no-default-keyring \
             --no-auto-check-trustdb --trust-model always \
             --homedir "$GPGTMPHOME"                      \
-            --keyring "$GPGTMPHOME/pubring.gpg"          \
+            --keyring "$KEYBOX"          \
             "${KEYSRV_OPTS[@]}"  "${PROXY_OPTS[@]}"                    \
             --recv $GPGKEYTOGET
+        TGT_GPG_DIR=/etc/apt/trusted.gpg.d
+        mkdir -p $TGT_GPG_DIR
+        TGT_GPG=$TGT_GPG_DIR/getkeys-autokey-$GPGKEYTOGET.gpg
+        gpg --ignore-time-conflict --no-options --no-default-keyring \
+            --no-auto-check-trustdb --trust-model always \
+            --homedir "$GPGTMPHOME" --keyring "$KEYBOX" 
+            --export  --output $TGT_GPG
 		let n=n+1
 	done < /tmp/updateresults
 
