@@ -94,7 +94,7 @@ Trying to import all the missing keys"
         TGT_GPG=$TGT_GPG_DIR/getkeys-autokey-$GPGKEYTOGET.gpg
         gpg --ignore-time-conflict --no-options --no-default-keyring \
             --no-auto-check-trustdb --trust-model always \
-            --homedir "$GPGTMPHOME" --keyring "$KEYBOX" 
+            --homedir "$GPGTMPHOME" --keyring "$KEYBOX"  \
             --export  --output $TGT_GPG
 		let n=n+1
 	done < /tmp/updateresults
