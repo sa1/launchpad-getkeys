@@ -88,7 +88,7 @@ Trying to import all the missing keys"
             --homedir "$GPGTMPHOME"                      \
             --keyring "$KEYBOX"          \
             "${KEYSRV_OPTS[@]}"  "${PROXY_OPTS[@]}"                    \
-            --recv $GPGKEYTOGET >$GPGTMPHOME/gpg.stdout
+            --recv $GPGKEYTOGET 2>$GPGTMPHOME/gpg.stdout
             cat $GPGTMPHOME/gpg.stdout
             TGT_NAME_BASE=$(cat  $GPGTMPHOME/gpg.stdout \
                 | grep -F -m 1 "public key" \
