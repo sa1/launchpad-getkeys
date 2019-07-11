@@ -63,6 +63,7 @@ apt-get update -qq 2> /tmp/updateresults
 
 
 MISSINGGEYS=$(cat /tmp/updateresults)
+
 PROXY_OPTS=()
 if [[ ! -z ${PROXY:-} ]]; then
     PROXY_OPTS=( --keyserver-options http-proxy=$PROXY )
@@ -86,7 +87,7 @@ Trying to import all the missing keys"
         KEYSRV_OPTS=( --keyserver hkp://keyserver.ubuntu.com:80 )
 		if [[ $KEYSERVER ]]; then
             KEYSRV_OPTS=( --keyserver hkp://$KEYSERVER )
-        fi
+    fi
 
 		gpg --ignore-time-conflict --no-options --no-default-keyring \
             --no-auto-check-trustdb --trust-model always \
