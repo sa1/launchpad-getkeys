@@ -79,8 +79,8 @@ Trying to import all the missing keys"
 	n=1
 	while read curline; do
 		GPGKEYTOGET=$(echo $curline | grep NO_PUBKEY | sed -e 's/.*: \|NO_PUBKEY //g')
-        [ -z "${GPGKEYTOGET}" ] && continue
-        [[ " ${IMPORTED_KEYS[@]} " =~ " ${GPGKEYTOGET} " ]] && continue
+        [ -z "${GPGKEYTOGET}" ] && continue # Skip empty values
+        [[ " ${IMPORTED_KEYS[@]} " =~ " ${GPGKEYTOGET} " ]] && continue # Skip repeatable keys
         GPGTMPHOME=$(mktemp -d /tmp/gpg-tmp-home.XXXXXXXXXX)
         KEYBOX=$GPGTMPHOME/pubring.gpg
         KEYSRV_OPTS=( --keyserver hkp://keyserver.ubuntu.com:80 )
@@ -94,24 +94,23 @@ Trying to import all the missing keys"
             --keyring "$KEYBOX"          \
             "${KEYSRV_OPTS[@]}"  "${PROXY_OPTS[@]}"                    \
             --recv $GPGKEYTOGET  2>$GPGTMPHOME/gpg.stderr
-            cat $GPGTMPHOME/gpg.stderr
-            TGT_NAME_BASE=$(cat  $GPGTMPHOME/gpg.stderr \
+        >&2 cat $GPGTMPHOME/gpg.stderr
+        TGT_NAME_BASE=$(cat  $GPGTMPHOME/gpg.stderr \
                 | grep -F -m 1 "public key" \
                 | sed -e 's/^[^"]*"//' \
                 | sed -e 's/"[^"]*//' \
                 | sed -e 's/ /__/g' \
                 | sed -e 's/[<>:]//g')
 
-            echo "TGT_NAME_BASE: $TGT_NAME_BASE"
         TGT_GPG_DIR=/etc/apt/trusted.gpg.d
         mkdir -p $TGT_GPG_DIR
-        TGT_GPG="${TGT_GPG_DIR}/getkeys__${TGT_NAME_BASE}__${GPGKEYTOGET}.gpg"
+        TGT_GPG="${TGT_GPG_DIR}/launchpad-getkeys_imported__${TGT_NAME_BASE}__${GPGKEYTOGET}.gpg"
         [ -f "$TGT_GPG" ] && rm -f "$TGT_GPG"
         gpg --ignore-time-conflict --no-options --no-default-keyring \
             --no-auto-check-trustdb --trust-model always \
             --homedir "$GPGTMPHOME" --keyring "$KEYBOX"  \
             --export  --output $TGT_GPG
-        echo "Key $GPGKEYTOGET saved as $TGT_GPG"
+        echo "Key $GPGKEYTOGET added at $TGT_GPG_DIR"
         rm -Rf $GPGTMPHOME
         IMPORTED_KEYS+=($GPGKEYTOGET)
 		let n=n+1
