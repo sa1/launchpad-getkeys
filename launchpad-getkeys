@@ -92,6 +92,7 @@ Trying to import all the missing keys"
         TGT_GPG_DIR=/etc/apt/trusted.gpg.d
         mkdir -p $TGT_GPG_DIR
         TGT_GPG=$TGT_GPG_DIR/getkeys-autokey-$GPGKEYTOGET.gpg
+        [ -f "$TGT_GPG" ] && rm -f "$TGT_GPG"
         gpg --ignore-time-conflict --no-options --no-default-keyring \
             --no-auto-check-trustdb --trust-model always \
             --homedir "$GPGTMPHOME" --keyring "$KEYBOX"  \
