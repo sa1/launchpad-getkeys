@@ -1,4 +1,5 @@
 #! /bin/bash
+
 if [ "`whoami`" != "root" ];
 then
 echo "Please run with SUDO"
@@ -62,12 +63,15 @@ apt-get update -qq 2> /tmp/updateresults
 
 
 MISSINGGEYS=$(cat /tmp/updateresults)
-PROXY_OPTS=""
+
+PROXY_OPTS=()
 if [[ ! -z ${PROXY:-} ]]; then
-       PROXY_OPTS="--keyserver-options http-proxy=$PROXY"
+    PROXY_OPTS=( --keyserver-options http-proxy=$PROXY )
 fi
 
 if [[ $MISSINGGEYS ]]; then
+
+declare -a IMPORTED_KEYS=()
 
 echo "
 Trying to import all the missing keys"
@@ -76,11 +80,40 @@ Trying to import all the missing keys"
 	n=1
 	while read curline; do
 		GPGKEYTOGET=$(echo $curline | grep NO_PUBKEY | sed -e 's/.*: \|NO_PUBKEY //g')
+        [ -z "${GPGKEYTOGET}" ] && continue # Skip empty values
+        [[ " ${IMPORTED_KEYS[@]} " =~ " ${GPGKEYTOGET} " ]] && continue # Skip repeatable keys
+        GPGTMPHOME=$(mktemp -d /tmp/gpg-tmp-home.XXXXXXXXXX)
+        KEYBOX=$GPGTMPHOME/pubring.gpg
+        KEYSRV_OPTS=( --keyserver hkp://keyserver.ubuntu.com:80 )
 		if [[ $KEYSERVER ]]; then
-			gpg --ignore-time-conflict --no-options --no-default-keyring --secret-keyring /etc/apt/secring.gpg --trustdb-name /etc/apt/trustdb.gpg --keyring /etc/apt/trusted.gpg --primary-keyring /etc/apt/trusted.gpg --keyserver hkp://$KEYSERVER $PROXY_OPTS  --recv $GPGKEYTOGET
-		else
-			gpg --ignore-time-conflict --no-options --no-default-keyring --secret-keyring /etc/apt/secring.gpg --trustdb-name /etc/apt/trustdb.gpg --keyring /etc/apt/trusted.gpg --primary-keyring /etc/apt/trusted.gpg --keyserver hkp://keyserver.ubuntu.com:80 $PROXY_OPTS  --recv $GPGKEYTOGET
-		fi
+            KEYSRV_OPTS=( --keyserver hkp://$KEYSERVER )
+    fi
+
+		gpg --ignore-time-conflict --no-options --no-default-keyring \
+            --no-auto-check-trustdb --trust-model always \
+            --homedir "$GPGTMPHOME"                      \
+            --keyring "$KEYBOX"          \
+            "${KEYSRV_OPTS[@]}"  "${PROXY_OPTS[@]}"                    \
+            --recv $GPGKEYTOGET  2>$GPGTMPHOME/gpg.stderr
+        >&2 cat $GPGTMPHOME/gpg.stderr
+        TGT_NAME_BASE=$(cat  $GPGTMPHOME/gpg.stderr \
+                | grep -F -m 1 "public key" \
+                | sed -e 's/^[^"]*"//' \
+                | sed -e 's/"[^"]*//' \
+                | sed -e 's/ /__/g' \
+                | sed -e 's/[<>:]//g')
+
+        TGT_GPG_DIR=/etc/apt/trusted.gpg.d
+        mkdir -p $TGT_GPG_DIR
+        TGT_GPG="${TGT_GPG_DIR}/launchpad-getkeys_imported__${TGT_NAME_BASE}__${GPGKEYTOGET}.gpg"
+        [ -f "$TGT_GPG" ] && rm -f "$TGT_GPG"
+        gpg --ignore-time-conflict --no-options --no-default-keyring \
+            --no-auto-check-trustdb --trust-model always \
+            --homedir "$GPGTMPHOME" --keyring "$KEYBOX"  \
+            --export  --output $TGT_GPG
+        echo "Key $GPGKEYTOGET added at $TGT_GPG_DIR"
+        rm -Rf $GPGTMPHOME
+        IMPORTED_KEYS+=($GPGKEYTOGET)
 		let n=n+1
 	done < /tmp/updateresults
 
