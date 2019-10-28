@@ -17,15 +17,18 @@ Usage:
 GPG keys
 * -k SERVER:PORT will pass a new keyserver, in case the default
 keyserver is down
-* -P PROXY:PORT lets you specify a proxy-server other than the default one.
+* -p PROXY:PORT lets you specify a proxy-server other than the default one.
+* -q KEY install specified key instead of looking for  missing keys, can occur multiple times
 "
 exit 0
 }
 
-while getopts "k:p:h\?" opt; do
+declare -a EXTRA_KEYS
+while getopts "k:p:q:h\?" opt; do
 	case "$opt" in
 		k ) KEYSERVER="$OPTARG"			;;
 		p ) PROXY="$OPTARG"			;;
+        q ) EXTRA_KEYS=("${EXTRA_KEYS[@]}" "$OPTARG")        ;;
 		h ) HELP				;;
 		\?) HELP				;;
 		* ) warn "Unknown option '$opt'";	;;
@@ -40,6 +43,8 @@ if [[ $KEYSERVER ]]; then
 		echo "Error: please enter a keyserver and a port, like so: sudo launchpad-getkeys -k SERVER:PORT"
 		exit 0
 	fi
+else
+    KEYSERVER=keyserver.ubuntu.com:80
 fi
 
 if [[ $PROXY ]]; then
@@ -54,6 +59,28 @@ fi
 if [[ ! $PROXY ]]; then
 	PROXY=$http_proxy	
 fi
+
+
+install_key ()
+{
+    PAR_KEY=$1
+    gpg --ignore-time-conflict --no-options --no-default-keyring \
+        --secret-keyring /etc/apt/secring.gpg --trustdb-name /etc/apt/trustdb.gpg \
+        --keyring /etc/apt/trusted.gpg --primary-keyring /etc/apt/trusted.gpg \
+        --keyserver hkp://$KEYSERVER --keyserver-options http-proxy=$PROXY  --recv $PAR_KEY
+}
+
+if ! [ ${#EXTRA_KEYS[@]} -eq 0 ]; then
+    echo "Installing extra keys."
+    for key in "${EXTRA_KEYS[@]}"; do
+        echo "  Installing key $key"
+        install_key $key
+    done
+
+    echo "Done installing keys."
+    return 0
+fi
+
 
 echo "
 Please wait... launchpad-getkeys is running an update so 
@@ -72,11 +99,7 @@ Trying to import all the missing keys"
 	n=1
 	while read curline; do
 		GPGKEYTOGET=$(echo $curline | grep NO_PUBKEY | sed -e 's/.*: \|NO_PUBKEY //g')
-		if [[ $KEYSERVER ]]; then
-			gpg --ignore-time-conflict --no-options --no-default-keyring --secret-keyring /etc/apt/secring.gpg --trustdb-name /etc/apt/trustdb.gpg --keyring /etc/apt/trusted.gpg --primary-keyring /etc/apt/trusted.gpg --keyserver hkp://$KEYSERVER --keyserver-options http-proxy=$PROXY  --recv $GPGKEYTOGET
-		else
-			gpg --ignore-time-conflict --no-options --no-default-keyring --secret-keyring /etc/apt/secring.gpg --trustdb-name /etc/apt/trustdb.gpg --keyring /etc/apt/trusted.gpg --primary-keyring /etc/apt/trusted.gpg --keyserver hkp://keyserver.ubuntu.com:80 --keyserver-options http-proxy=$PROXY --recv $GPGKEYTOGET
-		fi
+        install_key $GPGKEYTOGET
 		let n=n+1
 	done < /tmp/updateresults
 
@@ -90,3 +113,4 @@ There are no missing GPG keys!"
 fi
 
 rm /tmp/updateresults
+
