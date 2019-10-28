@@ -64,10 +64,16 @@ fi
 install_key ()
 {
     PAR_KEY=$1
-    gpg --ignore-time-conflict --no-options --no-default-keyring \
+    PROXY_PAR=""
+    if [[ $PROXY ]]; then
+        PROXY_PAR="--keyserver-options http-proxy=$PROXY"
+    fi
+
+    gpg_cmd="gpg --ignore-time-conflict --no-options --no-default-keyring \
         --secret-keyring /etc/apt/secring.gpg --trustdb-name /etc/apt/trustdb.gpg \
         --keyring /etc/apt/trusted.gpg --primary-keyring /etc/apt/trusted.gpg \
-        --keyserver hkp://$KEYSERVER --keyserver-options http-proxy=$PROXY  --recv $PAR_KEY
+        --keyserver hkp://$KEYSERVER $PROXY_PAR  --recv $PAR_KEY"
+    $gpg_cmd
 }
 
 if ! [ ${#EXTRA_KEYS[@]} -eq 0 ]; then
