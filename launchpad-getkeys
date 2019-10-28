@@ -60,8 +60,12 @@ if [[ ! $PROXY ]]; then
 	PROXY=$http_proxy	
 fi
 
-echo '$HOME = '
-echo "$HOME"
+PGDIR=${GNUPGHOME:-$HOME}
+if ! [ -d $PGDIR ]; then
+    mkdir $PGDIR
+    chmod 700 $PGDIR
+fi
+
 install_key ()
 {
     PAR_KEY=$1
