@@ -60,7 +60,8 @@ if [[ ! $PROXY ]]; then
 	PROXY=$http_proxy	
 fi
 
-
+echo '$HOME = '
+echo "$HOME"
 install_key ()
 {
     PAR_KEY=$1
