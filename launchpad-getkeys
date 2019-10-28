@@ -60,8 +60,8 @@ if [[ ! $PROXY ]]; then
 	PROXY=$http_proxy	
 fi
 
-PGDIR=${GNUPGHOME:-$HOME}
-if ! [ -d $PGDIR ]; then
+PGDIR=${GNUPGHOME:-$HOME/.gnupg}
+if [ ! -d $PGDIR ]; then
     mkdir $PGDIR
     chmod 700 $PGDIR
 fi
