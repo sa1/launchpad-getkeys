@@ -78,7 +78,7 @@ if ! [ ${#EXTRA_KEYS[@]} -eq 0 ]; then
     done
 
     echo "Done installing keys."
-    return 0
+    exit 0
 fi
 
 
