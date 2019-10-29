@@ -18,15 +18,18 @@ Usage:
 GPG keys
 * -k SERVER:PORT will pass a new keyserver, in case the default
 keyserver is down
-* -P PROXY:PORT lets you specify a proxy-server other than the default one.
+* -p PROXY:PORT lets you specify a proxy-server other than the default one.
+* -q KEY install specified key instead of looking for  missing keys, can occur multiple times
 "
 exit 0
 }
 
-while getopts "k:p:h\?" opt; do
+declare -a EXTRA_KEYS
+while getopts "k:p:q:h\?" opt; do
 	case "$opt" in
 		k ) KEYSERVER="$OPTARG"			;;
 		p ) PROXY="$OPTARG"			;;
+        q ) EXTRA_KEYS=("${EXTRA_KEYS[@]}" "$OPTARG")        ;;
 		h ) HELP				;;
 		\?) HELP				;;
 		* ) warn "Unknown option '$opt'";	;;
@@ -41,6 +44,8 @@ if [[ $KEYSERVER ]]; then
 		echo "Error: please enter a keyserver and a port, like so: sudo launchpad-getkeys -k SERVER:PORT"
 		exit 0
 	fi
+else
+    KEYSERVER=keyserver.ubuntu.com:80
 fi
 
 if [[ $PROXY ]]; then
@@ -56,6 +61,68 @@ if [[ ! $PROXY ]]; then
 	PROXY=$http_proxy	
 fi
 
+PGDIR=${GNUPGHOME:-$HOME/.gnupg}
+if [ ! -d $PGDIR ]; then
+    mkdir $PGDIR
+    chmod 700 $PGDIR
+fi
+
+PROXY_OPTS=()
+if [[ ! -z ${PROXY:-} ]]; then
+    PROXY_OPTS=( --keyserver-options http-proxy=$PROXY )
+fi
+
+
+install_key ()
+{
+    PAR_KEY=$1
+
+
+    GPGTMPHOME=$(mktemp -d /tmp/gpg-tmp-home.XXXXXXXXXX)
+    KEYBOX=$GPGTMPHOME/pubring.gpg
+    KEYSRV_OPTS=( --keyserver hkp://keyserver.ubuntu.com:80 )
+    if [[ $KEYSERVER ]]; then
+        KEYSRV_OPTS=( --keyserver hkp://$KEYSERVER )
+    fi
+
+    gpg --ignore-time-conflict --no-options --no-default-keyring \
+        --no-auto-check-trustdb --trust-model always \
+        --homedir "$GPGTMPHOME"                      \
+        --keyring "$KEYBOX"          \
+        "${KEYSRV_OPTS[@]}"  "${PROXY_OPTS[@]}"                    \
+        --recv $PAR_KEY  2>$GPGTMPHOME/gpg.stderr
+    >&2 cat $GPGTMPHOME/gpg.stderr
+    TGT_NAME_BASE=$(cat  $GPGTMPHOME/gpg.stderr \
+            | grep -F -m 1 "public key" \
+            | sed -e 's/^[^"]*"//' \
+            | sed -e 's/"[^"]*//' \
+            | sed -e 's/ /__/g' \
+            | sed -e 's/[<>:]//g')
+
+    TGT_GPG_DIR=/etc/apt/trusted.gpg.d
+    mkdir -p $TGT_GPG_DIR
+    TGT_GPG="${TGT_GPG_DIR}/launchpad-getkeys_imported__${TGT_NAME_BASE}__${PAR_KEY}.gpg"
+    [ -f "$TGT_GPG" ] && rm -f "$TGT_GPG"
+    gpg --ignore-time-conflict --no-options --no-default-keyring \
+        --no-auto-check-trustdb --trust-model always \
+        --homedir "$GPGTMPHOME" --keyring "$KEYBOX"  \
+        --export  --output $TGT_GPG
+    echo "Key $PAR_KEY added at $TGT_GPG_DIR"
+    rm -Rf $GPGTMPHOME
+}
+
+if ! [ ${#EXTRA_KEYS[@]} -eq 0 ]; then
+    echo "Installing extra keys."
+    for key in "${EXTRA_KEYS[@]}"; do
+        echo "  Installing key $key"
+        install_key $key
+    done
+
+    echo "Done installing keys."
+    exit 0
+fi
+
+
 echo "
 Please wait... launchpad-getkeys is running an update so 
 it can detect the missing GPG keys"
@@ -63,11 +130,6 @@ apt-get update -qq 2> /tmp/updateresults
 
 
 MISSINGGEYS=$(cat /tmp/updateresults)
-
-PROXY_OPTS=()
-if [[ ! -z ${PROXY:-} ]]; then
-    PROXY_OPTS=( --keyserver-options http-proxy=$PROXY )
-fi
 
 if [[ $MISSINGGEYS ]]; then
 
@@ -82,37 +144,7 @@ Trying to import all the missing keys"
 		GPGKEYTOGET=$(echo $curline | grep NO_PUBKEY | sed -e 's/.*: \|NO_PUBKEY //g')
         [ -z "${GPGKEYTOGET}" ] && continue # Skip empty values
         [[ " ${IMPORTED_KEYS[@]} " =~ " ${GPGKEYTOGET} " ]] && continue # Skip repeatable keys
-        GPGTMPHOME=$(mktemp -d /tmp/gpg-tmp-home.XXXXXXXXXX)
-        KEYBOX=$GPGTMPHOME/pubring.gpg
-        KEYSRV_OPTS=( --keyserver hkp://keyserver.ubuntu.com:80 )
-		if [[ $KEYSERVER ]]; then
-            KEYSRV_OPTS=( --keyserver hkp://$KEYSERVER )
-    fi
-
-		gpg --ignore-time-conflict --no-options --no-default-keyring \
-            --no-auto-check-trustdb --trust-model always \
-            --homedir "$GPGTMPHOME"                      \
-            --keyring "$KEYBOX"          \
-            "${KEYSRV_OPTS[@]}"  "${PROXY_OPTS[@]}"                    \
-            --recv $GPGKEYTOGET  2>$GPGTMPHOME/gpg.stderr
-        >&2 cat $GPGTMPHOME/gpg.stderr
-        TGT_NAME_BASE=$(cat  $GPGTMPHOME/gpg.stderr \
-                | grep -F -m 1 "public key" \
-                | sed -e 's/^[^"]*"//' \
-                | sed -e 's/"[^"]*//' \
-                | sed -e 's/ /__/g' \
-                | sed -e 's/[<>:]//g')
-
-        TGT_GPG_DIR=/etc/apt/trusted.gpg.d
-        mkdir -p $TGT_GPG_DIR
-        TGT_GPG="${TGT_GPG_DIR}/launchpad-getkeys_imported__${TGT_NAME_BASE}__${GPGKEYTOGET}.gpg"
-        [ -f "$TGT_GPG" ] && rm -f "$TGT_GPG"
-        gpg --ignore-time-conflict --no-options --no-default-keyring \
-            --no-auto-check-trustdb --trust-model always \
-            --homedir "$GPGTMPHOME" --keyring "$KEYBOX"  \
-            --export  --output $TGT_GPG
-        echo "Key $GPGKEYTOGET added at $TGT_GPG_DIR"
-        rm -Rf $GPGTMPHOME
+        install_key $GPGKEYTOGET
         IMPORTED_KEYS+=($GPGKEYTOGET)
 		let n=n+1
 	done < /tmp/updateresults
